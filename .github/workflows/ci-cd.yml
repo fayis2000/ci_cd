@@ -1,0 +1,29 @@
+name: CI/CD Pipeline
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm install
+      - run: npm run lint
+      - run: npm test
+      - name: Build Docker Image
+        run: docker build -t node-app:latest .
+      - name: Deploy
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            docker stop node-app || true
+            docker rm node-app || true
+            docker pull node-app:latest
+            docker run -d -p 3000:3000 --name node-app node-app:latest
